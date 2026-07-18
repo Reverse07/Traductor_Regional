@@ -4,9 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { translate, pairLabel, Direction, LangPair } from '@/lib/translate';
 
-// ===== DECLARACIÓN PARA EVITAR ERROR DE TYPESCRIPT EN EL BUILD =====
-declare var SpeechRecognition: any;
-declare var webkitSpeechRecognition: any;
+// ===== DECLARACIÓN LOCAL DE LA INTERFAZ WINDOW =====
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 type HistoryItem = {
   id: string;
@@ -46,7 +50,7 @@ export default function Translator() {
     setUser(JSON.parse(userData));
   }, [router]);
 
-  // Cargar preferencia de modo oscuro desde localStorage
+  // Cargar preferencia de modo oscuro
   useEffect(() => {
     const stored = localStorage.getItem('darkMode');
     if (stored) setDarkMode(JSON.parse(stored));
@@ -91,7 +95,7 @@ export default function Translator() {
 
       if (useApi) {
         setInfoMessage('🧠 Procesando con inteligencia artificial...');
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 800));
 
         const result = translate(inputText, pair, direction);
         output = result.output;
@@ -104,7 +108,7 @@ export default function Translator() {
           const percent = Math.round((matchedWords / totalWords) * 100);
           setInfoMessage(`🧠 IA: ${matchedWords}/${totalWords} palabras traducidas (${percent}% de precisión)`);
         } else if (result.approximated.length > 0) {
-          setInfoMessage(`🔍 IA aplicó corrección contextual en: ${result.approximated.map(a => a.original).join(', ')}`);
+          setInfoMessage(`🔍 IA aplicó corrección contextual en: ${result.approximated.map((a) => a.original).join(', ')}`);
         } else {
           setInfoMessage('✅ Traducción completada con IA');
         }
@@ -250,7 +254,7 @@ export default function Translator() {
       className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 bg-cover bg-center bg-no-repeat relative ${containerClass}`}
       style={{ backgroundImage: "url('/img/fondoTraduccionRegional.jpg')" }}
     >
-      {/* Overlay para mejorar legibilidad del texto sobre la imagen de fondo */}
+      {/* Overlay para mejorar legibilidad */}
       <div
         className={`fixed inset-0 -z-10 transition-colors duration-500 ${
           darkMode ? 'bg-black/60' : 'bg-white/20'
@@ -258,7 +262,7 @@ export default function Translator() {
       />
 
       <div className={`w-full max-w-3xl p-6 rounded-3xl transition-all duration-500 ${cardClass}`}>
-        {/* Encabezado con usuario y toggle de modo oscuro */}
+        {/* Encabezado con usuario y toggle */}
         <div className="flex flex-wrap justify-between items-center mb-6 gap-2">
           <div className="text-center flex-1 min-w-[200px]">
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -292,16 +296,18 @@ export default function Translator() {
 
         {/* Badge de modo */}
         <div className="flex justify-center mb-4">
-          <span className={`px-4 py-1 rounded-full text-xs font-semibold transition-colors ${
-            useApi
-              ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300'
-              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
-          }`}>
+          <span
+            className={`px-4 py-1 rounded-full text-xs font-semibold transition-colors ${
+              useApi
+                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300'
+                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
             {useApi ? '🧠 Modo IA Inteligente' : '📖 Modo Diccionario Local'}
           </span>
         </div>
 
-        {/* Selectores de idioma (tabs) */}
+        {/* Selectores de idioma */}
         <div className="flex flex-wrap gap-2 justify-center mb-4">
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl">
             <button
@@ -349,7 +355,7 @@ export default function Translator() {
           </div>
         </div>
 
-        {/* Toggle IA con diseño elegante */}
+        {/* Toggle IA */}
         <div className="flex items-center justify-center gap-3 mb-4">
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -404,7 +410,7 @@ export default function Translator() {
           </button>
         </div>
 
-        {/* Mensajes de estado con iconos */}
+        {/* Mensajes de estado */}
         {(isListening || micError || infoMessage || isTranslating) && (
           <div className="mb-3 space-y-2">
             {isListening && (
@@ -437,7 +443,9 @@ export default function Translator() {
               <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1">
                 Traducción
                 {translationMethod === 'api' && (
-                  <span className="bg-indigo-200 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full">IA</span>
+                  <span className="bg-indigo-200 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-300 text-[10px] px-2 py-0.5 rounded-full">
+                    IA
+                  </span>
                 )}
               </div>
               <div className="text-lg font-medium text-gray-900 dark:text-white break-words mt-1">
@@ -447,7 +455,9 @@ export default function Translator() {
             <button
               onClick={speakTranslation}
               className={`p-2 rounded-full transition-all flex-shrink-0 ${
-                speaking ? 'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300' : 'hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400'
+                speaking
+                  ? 'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300'
+                  : 'hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400'
               }`}
               title="Escuchar traducción"
             >
@@ -494,7 +504,7 @@ export default function Translator() {
           </div>
         )}
 
-        {/* Footer con ejemplos */}
+        {/* Footer */}
         <div className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-700 pt-4">
           <span>💡 Prueba frases como </span>
           <span className="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded">buenos días</span>
@@ -509,7 +519,9 @@ export default function Translator() {
               : '📖 Diccionario local: palabras y frases definidas manualmente'}
           </span>
           <div className="mt-1 text-[10px] text-gray-400 dark:text-gray-600">
-            {useApi ? `Precisión estimada: ~${Math.round((history.filter(h=>h.method==='api').length / history.length || 0) * 100)}% en modo IA` : 'Modo offline, sin conexión a internet'}
+            {useApi
+              ? `Precisión estimada: ~${Math.round((history.filter((h) => h.method === 'api').length / history.length || 0) * 100)}% en modo IA`
+              : 'Modo offline, sin conexión a internet'}
           </div>
         </div>
       </div>
