@@ -110,3 +110,5 @@ export function translate(text: string, pair: LangPair, direction: Direction): T
 export function pairLabel(pair: LangPair): string {
   return pair === 'qu' ? 'Quechua' : 'Aimara';
 }
+
+export type { LangPair } from './dictionary';
