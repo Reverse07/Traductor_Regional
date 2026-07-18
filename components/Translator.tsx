@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { translate, pairLabel, Direction, LangPair } from '@/lib/translate';
 
+// ===== DECLARACIÓN PARA EVITAR ERROR DE TYPESCRIPT EN EL BUILD =====
+declare var SpeechRecognition: any;
+declare var webkitSpeechRecognition: any;
+
 type HistoryItem = {
   id: string;
   from: string;
@@ -14,14 +18,9 @@ type HistoryItem = {
   method: 'local' | 'api';
 };
 
-declare global {
-  interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
-  }
-}
-
 export default function Translator() {
+  const router = useRouter();
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [direction, setDirection] = useState<Direction>('es-x');
@@ -35,6 +34,17 @@ export default function Translator() {
   const [micError, setMicError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+
+  // Verificar autenticación y cargar usuario
+  useEffect(() => {
+    const logged = localStorage.getItem('isLoggedIn');
+    const userData = localStorage.getItem('user');
+    if (!logged || !userData) {
+      router.push('/');
+      return;
+    }
+    setUser(JSON.parse(userData));
+  }, [router]);
 
   // Cargar preferencia de modo oscuro desde localStorage
   useEffect(() => {
@@ -52,11 +62,18 @@ export default function Translator() {
     if (stored) setHistory(JSON.parse(stored));
   }, []);
 
-useEffect(() => {
-  localStorage.setItem('translationHistory', JSON.stringify(history));
-}, [history]);
+  useEffect(() => {
+    localStorage.setItem('translationHistory', JSON.stringify(history));
+  }, [history]);
 
-// ========== TRADUCCIÓN ==========
+  // Cerrar sesión
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('user');
+    router.push('/');
+  };
+
+  // ========== TRADUCCIÓN ==========
   const handleTranslate = async () => {
     if (!inputText.trim()) {
       setMicError('Escribe o habla algo para traducir.');
@@ -126,22 +143,22 @@ useEffect(() => {
     }
   };
 
-  // ========== RECONOCIMIENTO DE VOZ ==========
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // ========== RECONOCIMIENTO DE VOZ (CORREGIDO) ==========
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
+      const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognitionConstructor) {
         setMicError('Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.');
         return;
       }
-      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current = new SpeechRecognitionConstructor();
       recognitionRef.current.lang = 'es-ES';
       recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = false;
 
-      recognitionRef.current.onresult = (event) => {
+      recognitionRef.current.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInputText(transcript);
         setIsListening(false);
@@ -150,7 +167,7 @@ useEffect(() => {
         console.log('🎤 Voz capturada:', transcript);
       };
 
-      recognitionRef.current.onerror = (event) => {
+      recognitionRef.current.onerror = (event: any) => {
         console.error('Speech error:', event.error);
         setIsListening(false);
         if (event.error === 'not-allowed') {
@@ -223,29 +240,27 @@ useEffect(() => {
   };
 
   // ========== RENDER ==========
-  const containerClass = darkMode
-    ? 'bg-gray-900 text-white'
-    : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50';
-
+  const containerClass = darkMode ? 'text-white' : 'text-gray-900';
   const cardClass = darkMode
     ? 'bg-gray-800/90 backdrop-blur-sm border-gray-700 shadow-2xl'
     : 'bg-white/80 backdrop-blur-sm border-white/20 shadow-2xl';
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ${containerClass}`}>
-      {/* Fondo animado (solo en modo claro) */}
-      {!darkMode && (
-        <div className="fixed inset-0 -z-10 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
-        </div>
-      )}
+    <div
+      className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-500 bg-cover bg-center bg-no-repeat relative ${containerClass}`}
+      style={{ backgroundImage: "url('/img/fondoTraduccionRegional.jpg')" }}
+    >
+      {/* Overlay para mejorar legibilidad del texto sobre la imagen de fondo */}
+      <div
+        className={`fixed inset-0 -z-10 transition-colors duration-500 ${
+          darkMode ? 'bg-black/60' : 'bg-white/20'
+        }`}
+      />
 
       <div className={`w-full max-w-3xl p-6 rounded-3xl transition-all duration-500 ${cardClass}`}>
-        {/* Encabezado con toggle de modo oscuro */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="text-center flex-1">
+        {/* Encabezado con usuario y toggle de modo oscuro */}
+        <div className="flex flex-wrap justify-between items-center mb-6 gap-2">
+          <div className="text-center flex-1 min-w-[200px]">
             <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               🗣️ Traductor Regional
             </h1>
@@ -253,13 +268,26 @@ useEffect(() => {
               Quechua · Aimara · Español
             </p>
           </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 transition-colors hover:scale-110"
-            aria-label="Toggle dark mode"
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {user && (
+              <div className="flex items-center gap-2 bg-white/20 dark:bg-gray-800/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-600">
+                <span className="text-sm text-gray-700 dark:text-gray-200">👤 {user.name}</span>
+                <button
+                  onClick={handleLogout}
+                  className="text-xs bg-red-500/30 hover:bg-red-500/50 text-red-700 dark:text-red-300 px-3 py-1 rounded-full transition-all border border-red-400/30"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 transition-colors hover:scale-110"
+              aria-label="Toggle dark mode"
+            >
+              {darkMode ? '☀️' : '🌙'}
+            </button>
+          </div>
         </div>
 
         {/* Badge de modo */}
