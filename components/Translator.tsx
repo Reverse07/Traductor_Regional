@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { translate, pairLabel, Direction, LangPair } from '@/lib/translate';
 
 type HistoryItem = {
@@ -12,6 +13,13 @@ type HistoryItem = {
   timestamp: number;
   method: 'local' | 'api';
 };
+
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 export default function Translator() {
   const [inputText, setInputText] = useState('');
@@ -44,11 +52,11 @@ export default function Translator() {
     if (stored) setHistory(JSON.parse(stored));
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('translationHistory', JSON.stringify(history));
-  }, [history]);
+useEffect(() => {
+  localStorage.setItem('translationHistory', JSON.stringify(history));
+}, [history]);
 
-  // ========== TRADUCCIÓN ==========
+// ========== TRADUCCIÓN ==========
   const handleTranslate = async () => {
     if (!inputText.trim()) {
       setMicError('Escribe o habla algo para traducir.');
